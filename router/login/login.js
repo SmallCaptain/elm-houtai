@@ -36,8 +36,8 @@ router.post('/loginUser', (req, res, next) => {
                     // 参数2 加密的密钥
                     // 参数3 配置对象，可以配合当前token有效期
                     const token = jwt.sign({
-                        username: data.username,
-                        userId: data.id
+                        username:data[0].user_name,
+                        userId: data[0].id
                     }, secretKey, {
                         expiresIn: '10h'
                     });
@@ -57,7 +57,7 @@ router.post('/loginUser', (req, res, next) => {
                 }
             } else {
                 // 否则表示没该用户 对其进行注册 id 用户名 密码 状态
-                let isql = "insert into user(id,user_name,user_password,status,img) values(?,?,?,?,?)";
+                let isql = "insert into user(id,user_name,user_password,status,img,phone) values(?,?,?,?,?,?)";
                 let isqlArr = [];
                 let id = null;
                 let status = 1;
@@ -69,12 +69,14 @@ router.post('/loginUser', (req, res, next) => {
                         return
                     }
                     if (data.affectedRows === 1) {
+                        console.log(`data.username`, reqData.username);
+                        console.log(`id`, id);
                         // 注册成功！
                         res.send({
                             status: true,
                             msg: '注册成功！！',
                             token: jwt.sign({
-                                username: data.username,
+                                username: reqData.username,
                                 userId: id
                             }, secretKey, {
                                 expiresIn: '10h'
@@ -95,6 +97,7 @@ router.post('/loginUser', (req, res, next) => {
                     isqlArr.push(reqData.password);
                     isqlArr.push(status);
                     isqlArr.push(img);
+                    isqlArr.push('无');
 
                     dbConfig.sqlConnect(isql, isqlArr, iscallBack)
                 });
