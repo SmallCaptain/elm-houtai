@@ -36,7 +36,7 @@ router.post('/loginUser', (req, res, next) => {
                     // 参数2 加密的密钥
                     // 参数3 配置对象，可以配合当前token有效期
                     const token = jwt.sign({
-                        username:data[0].user_name,
+                        username: data[0].user_name,
                         userId: data[0].id
                     }, secretKey, {
                         expiresIn: '10h'
@@ -61,8 +61,7 @@ router.post('/loginUser', (req, res, next) => {
                 let isqlArr = [];
                 let id = null;
                 let status = 1;
-                let img = __dirname+'/public/images/defalut_avatar.jpg'
-                console.log(`img`, img);
+                let img = __dirname + '/public/images/defalut_avatar.jpg'
                 let iscallBack = function (err, data) {
                     if (err) {
                         console.log('插入语句链接出错啦');
@@ -72,6 +71,17 @@ router.post('/loginUser', (req, res, next) => {
                         console.log(`data.username`, reqData.username);
                         console.log(`id`, id);
                         // 注册成功！
+                        // 往 user_msg表中初始化数据
+                        let iMsgSql = "insert into user_msg(id,money,integrate,preferential_number,area,recive_area,recive_area_detail) values(?,?,?,?,?,?,?)";
+                        let iMsgArr = [id, 0, 0, 0, '未定位', '未设置','未设置'];
+                        let iMsgArrCallback = function (err, data) {
+                            if (err) {
+                                console.log('插入语句链接出错啦', err);
+                                return
+                            }
+                            console.log('初始化user_msg成功');
+                        }
+                        dbConfig.sqlConnect(iMsgSql, iMsgArr, iMsgArrCallback);
                         res.send({
                             status: true,
                             msg: '注册成功！！',

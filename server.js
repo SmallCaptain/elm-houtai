@@ -23,10 +23,10 @@ app.use(express.static(path.join(__dirname, '/static')));
 app.use(express.static(path.join(__dirname, '/public')));
 //解决跨域
 app.use(cors({}));
-app.use((req, res, next) => {
-    console.log(`req.url`, req.url);
-    next();
-});
+// app.use((req, res, next) => {
+//     console.log(`req.url`, req.url);
+//     next();
+// });
 // 位置放到路由最后
 // 将jwt字符串还原成json对象的中间件 unless 指定接口不需要访问权限 正则匹配 
 app.use(expressJwt(tokenOptions).unless({
