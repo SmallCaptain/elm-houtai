@@ -72,8 +72,8 @@ router.post('/loginUser', (req, res, next) => {
                         console.log(`id`, id);
                         // 注册成功！
                         // 往 user_msg表中初始化数据
-                        let iMsgSql = "insert into user_msg(id,money,integrate,preferential_number,area,recive_area,recive_area_detail) values(?,?,?,?,?,?,?)";
-                        let iMsgArr = [id, 0, 0, 0, '未定位', '未设置','未设置'];
+                        let iMsgSql = "insert into user_msg(id,money,integrate,preferential_number,area,areaId) values(?,?,?,?,?,?)";
+                        let iMsgArr = [id, 0, 0, 0, '未定位',0];
                         let iMsgArrCallback = function (err, data) {
                             if (err) {
                                 console.log('插入语句链接出错啦', err);

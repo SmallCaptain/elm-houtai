@@ -59,6 +59,7 @@ app.use((err, req, res, next) => {
             msg: '令牌G了'
         });
     }
+    console.log(err);
     res.send({
         status: 500,
         msg: '未知错误'
