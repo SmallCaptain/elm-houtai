@@ -39,9 +39,12 @@ app.get('/public/images/*', function (req, res) {
 })
 // 允许解析 json和urlencoded数据
 app.use(express.urlencoded({
-    extended: false
+    extended: false,
+    limit:'1000mb'
 }));
-app.use(express.json());
+app.use(express.json({
+    limit:'1000mb'
+}));
 
 // 路由设置
 import login from './router/login/login.js'
@@ -50,6 +53,9 @@ import reset from './router/reset/reset.js'
 app.use('/login', reset);
 import user from './router/user/user.js'
 app.use('/user', user);
+// 商家部分
+import merchant from './router/store/index.js'
+app.use('/merchant',merchant);
 
 // 错误中间件 在所有路由之后
 app.use((err, req, res, next) => {

@@ -26,7 +26,7 @@ export default {
     
     // 异步连接池
     //promise 回调
-    SySqlConnect: function (sySql, sqlArr) {
+    SySqlConnect:function(sySql, sqlArr) {
         return new Promise((resolve, reject) => {
             var pool = mysql.createPool(this.config)
             pool.getConnection((err, conn) => {
@@ -47,6 +47,7 @@ export default {
             })
         }).catch((err)=>{
             console.log(err)
+            // console.log('出错');
         })
     }
 }

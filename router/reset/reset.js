@@ -2,7 +2,7 @@ import express from "express";
 import dbConfig from '../../utils/dbconfig.js';
 let router = express.Router();
 
-
+//用户重置密码
 router.post('/reset', function (req, res, next) {
     let reqData = req.body;
     let selSql = 'select * from user where user_name = ?';

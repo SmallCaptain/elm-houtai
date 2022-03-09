@@ -1,7 +1,9 @@
 import express from "express";
 import dbConfig from '../../utils/dbconfig.js';
 import jwt from 'jsonwebToken';
-import path from 'path';
+import path, {
+    resolve
+} from 'path';
 import {
     nanoid
 } from 'nanoid/async'
@@ -73,7 +75,7 @@ router.post('/loginUser', (req, res, next) => {
                         // 注册成功！
                         // 往 user_msg表中初始化数据
                         let iMsgSql = "insert into user_msg(id,money,integrate,preferential_number,area,areaId) values(?,?,?,?,?,?)";
-                        let iMsgArr = [id, 0, 0, 0, '未定位',0];
+                        let iMsgArr = [id, 0, 0, 0, '未定位', 0];
                         let iMsgArrCallback = function (err, data) {
                             if (err) {
                                 console.log('插入语句链接出错啦', err);
@@ -117,5 +119,82 @@ router.post('/loginUser', (req, res, next) => {
 
     dbConfig.sqlConnect(sql, sqlArr, callBack)
 
-});
+})
+//定位
+
+// 获取所有 城市信息
+router.post('/getCitys', (req, res, next) => {
+    let checkSql = "select * from citys where abbr like ?"
+    let checkSqlArr = ['A%', 'B%', 'C%', 'D%', 'E%', 'F%', 'G%', 'H%', 'J%', 'K%', 'L%', 'M%', 'N%', 'P%', 'Q%', 'R%', 'S%', 'T%', 'W%', 'X%', 'Y%', 'Z%'];
+    let resData = {};
+
+    getCitys(checkSql, checkSqlArr).then(data => {
+        resData = data;
+        if (JSON.stringify(resData) !== '{}') {
+            console.log(resData);
+            res.send(resData);
+            return
+        } else {
+            res.send({
+                msg: '失败',
+                err: '未知错误'
+            });
+            return
+        }
+    });
+
+})
+
+async function getCitys(checkSql, checkSqlArr) {
+    let obj = {};
+    let data = null;
+    for (const iterator of checkSqlArr) {
+        let abbr = iterator.split('%')[0];
+        data = await dbConfig.SySqlConnect(checkSql, iterator);
+
+        obj[abbr] = data;
+    }
+    console.log(obj);
+    return obj;
+}
+//#region
+/* 
+//采集大佬的定位数据吧！
+router.post('/copy', (req, res, next) => {
+    let reqData = req.body;
+    let insertSql = "insert into citys(pinyin,is_map,longitude,latitude,sort,area_code,abbr,name,id) values(?,?,?,?,?,?,?,?,?)";
+    let callBack = function (err, data) {
+        if (err) {
+            console.log('本轮插入失败啦');
+            return
+        }
+        if (data.affectedRows === 1) {
+            console.log('插入本轮成功');
+        }
+    }
+    insertData(reqData, insertSql, callBack);
+    res.send({
+        msg: '搞完啦 有没有报错我也不知道'
+    });
+    return;
+})
+
+ function insertData(reqData, insertSql, callBack) {
+
+    const element = reqData;
+
+    element.forEach( async obj => {
+        let insertArr = [];
+        for (const key2 in obj) {
+            if (Object.hasOwnProperty.call(obj, key2)) {
+                const item = obj[key2];
+                insertArr.push(item);
+            }
+        }
+        let promise = await dbConfig.SySqlConnect(insertSql, insertArr, callBack);
+    });
+
+
+}*/
+// #endregion
 export default router;
