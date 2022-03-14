@@ -127,11 +127,14 @@ router.post('/getCitys', (req, res, next) => {
     let checkSql = "select * from citys where abbr like ?"
     let checkSqlArr = ['A%', 'B%', 'C%', 'D%', 'E%', 'F%', 'G%', 'H%', 'J%', 'K%', 'L%', 'M%', 'N%', 'P%', 'Q%', 'R%', 'S%', 'T%', 'W%', 'X%', 'Y%', 'Z%'];
     let resData = {};
-
+    let ip = req.headers['x-forwarded-for'] ||
+    req.connection.remoteAddress ||
+    req.socket.remoteAddress ||
+    req.connection.socket.remoteAddress;
+    console.log(ip);
     getCitys(checkSql, checkSqlArr).then(data => {
         resData = data;
         if (JSON.stringify(resData) !== '{}') {
-            console.log(resData);
             res.send(resData);
             return
         } else {
@@ -154,7 +157,6 @@ async function getCitys(checkSql, checkSqlArr) {
 
         obj[abbr] = data;
     }
-    console.log(obj);
     return obj;
 }
 //#region

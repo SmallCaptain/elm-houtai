@@ -30,7 +30,7 @@ app.use(cors({}));
 // 位置放到路由最后
 // 将jwt字符串还原成json对象的中间件 unless 指定接口不需要访问权限 正则匹配 
 app.use(expressJwt(tokenOptions).unless({
-    path: [/^\/login\//, /^\/public\//, /^\/$/]
+    path: [/^\/login\//, /^\/public\//, /^\/$/,/^\/merchant\//]
 }))
 // 处理图片的问题
 app.get('/public/images/*', function (req, res) {
