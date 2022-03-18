@@ -1,9 +1,6 @@
 import express from "express";
 import dbConfig from '../../utils/dbconfig.js';
 import jwt from 'jsonwebToken';
-import path, {
-    resolve
-} from 'path';
 import {
     nanoid
 } from 'nanoid/async'
@@ -63,7 +60,8 @@ router.post('/loginUser', (req, res, next) => {
                 let isqlArr = [];
                 let id = null;
                 let status = 1;
-                let img = __dirname + '/public/images/defalut_avatar.jpg'
+                let img = __dirname + '/public/images/defalut_avatar.jpg';
+                console.log(img);
                 let iscallBack = function (err, data) {
                     if (err) {
                         console.log('插入语句链接出错啦');

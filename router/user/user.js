@@ -1,5 +1,12 @@
 import express from "express";
 import dbConfig from '../../utils/dbconfig.js';
+import formidable from 'formidable';
+import path from 'path';
+import fs from 'fs';
+import dbconfig from "../../utils/dbconfig.js";
+
+const __dirname = path.resolve();
+const imgSrc = 'http://localhost:5115';
 let router = express.Router();
 
 // 获取用户信息
@@ -166,7 +173,64 @@ router.post('/chageUserName', (req, res, next) => {
 })
 // 修改头像
 router.post('/chageAvatar', (req, res, next) => {
-    console.log(req.body);
+    let dir = path.join(__dirname, '/public/images');
+    let form = formidable({
+        multiples: false,
+        uploadDir: dir,
+        keepExtensions: true,
+        maxFieldsSize: (2 * 1024 * 1024),
+        encoding: 'utf-8'
+    });
+    form.parse(req, function (err, fields, files) {
+        let msg = '';
+        let extname = path.extname(files.file.filepath);
+        let newFileName = req.user.userId + extname;
+        let newPath = dir + '\\' + newFileName;
+        let oldPath = files.file.filepath;
+        if (err) {
+            console.log(err);
+            msg = {
+                err: 1,
+                msg: '文件解析失败了。。'
+            }
+            return
+        }
+        fs.rename(oldPath, newPath, function (err) {
+            if (err) {
+                console.log(err);
+                throw Error('文件变更名出错。。')
+            }
+            let updSql = "update user set img = ? where id = ?"
+            let id = req.user.userId;
+            let src = imgSrc + '/public/images' + '/' + newFileName;
+            let callback = function (err, data) {
+                if (err) {
+                    console.log(err);
+                    return
+                }
+                if (data.affectedRows === 1) {
+                    msg = {
+                        status: 200,
+                        msg: 'success！',
+                        src:src
+                    }
+                    res.send(msg);
+                    return
+                } else {
+                    msg = {
+                        status: 400,
+                        msg: '失败。。。！'
+                    }
+                    res.send(msg);
+                    return
+                }
+            }
+            dbconfig.sqlConnect(updSql,[src,id],callback);
+            return;
+
+        })
+    })
+
 })
 // 获取红包优惠信息
 router.post('/RedPacket', (req, res, next) => {
@@ -191,26 +255,26 @@ router.post('/RedPacket', (req, res, next) => {
                 let beforeTime = item.dead_time;
                 let nowTime = new Date();
                 let dead_time = item.dead_time;
-                let getTime = beforeTime-nowTime;
-                item.dead_time=dealDate(dead_time);
+                let getTime = beforeTime - nowTime;
+                item.dead_time = dealDate(dead_time);
                 if (getTime > 0) {
-                    let day = parseInt(getTime/(1000*3600*24));
+                    let day = parseInt(getTime / (1000 * 3600 * 24));
                     if (day < 7) {
                         resData.deadNum++;
                     }
-                    item.leav_time=day;
-                }else{
-                    item['leav_time']=0;
-                    item.stale_dated=1;
+                    item.leav_time = day;
+                } else {
+                    item['leav_time'] = 0;
+                    item.stale_dated = 1;
                 }
                 newArr.push(item);
             });
-            resData.redPacketInfo=newArr;
-            resData.totalNum=newArr.length;
+            resData.redPacketInfo = newArr;
+            resData.totalNum = newArr.length;
 
             res.send(resData);
             return;
-        }else{
+        } else {
             res.send([]);
             return;
         }
@@ -220,10 +284,10 @@ router.post('/RedPacket', (req, res, next) => {
 })
 
 // 处理时间 转换格式为 yyyy-mm-dd
-function dealDate(time){
+function dealDate(time) {
     let year = time.getFullYear();
-    let month = time.getMonth()+1;
-    let day = time.getDate()-1;
+    let month = time.getMonth() + 1;
+    let day = time.getDate() - 1;
     let string = `${year}-${month}-${day}`;
     return string;
 };
