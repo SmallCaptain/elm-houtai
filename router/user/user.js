@@ -212,7 +212,7 @@ router.post('/chageAvatar', (req, res, next) => {
                     msg = {
                         status: 200,
                         msg: 'success！',
-                        src:src
+                        src: src
                     }
                     res.send(msg);
                     return
@@ -225,7 +225,7 @@ router.post('/chageAvatar', (req, res, next) => {
                     return
                 }
             }
-            dbconfig.sqlConnect(updSql,[src,id],callback);
+            dbconfig.sqlConnect(updSql, [src, id], callback);
             return;
 
         })
@@ -282,6 +282,7 @@ router.post('/RedPacket', (req, res, next) => {
     checkSqlArr.push(id);
     dbConfig.sqlConnect(checkSql, checkSqlArr, checkCallBack);
 })
+
 
 // 处理时间 转换格式为 yyyy-mm-dd
 function dealDate(time) {

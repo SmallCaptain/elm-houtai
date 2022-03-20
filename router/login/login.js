@@ -1,6 +1,7 @@
 import express from "express";
 import dbConfig from '../../utils/dbconfig.js';
 import jwt from 'jsonwebToken';
+import fetch from 'node-fetch';
 import {
     nanoid
 } from 'nanoid/async'
@@ -126,9 +127,9 @@ router.post('/getCitys', (req, res, next) => {
     let checkSqlArr = ['A%', 'B%', 'C%', 'D%', 'E%', 'F%', 'G%', 'H%', 'J%', 'K%', 'L%', 'M%', 'N%', 'P%', 'Q%', 'R%', 'S%', 'T%', 'W%', 'X%', 'Y%', 'Z%'];
     let resData = {};
     let ip = req.headers['x-forwarded-for'] ||
-    req.connection.remoteAddress ||
-    req.socket.remoteAddress ||
-    req.connection.socket.remoteAddress;
+        req.connection.remoteAddress ||
+        req.socket.remoteAddress ||
+        req.connection.socket.remoteAddress;
     console.log(ip);
     getCitys(checkSql, checkSqlArr).then(data => {
         resData = data;
@@ -145,7 +146,27 @@ router.post('/getCitys', (req, res, next) => {
     });
 
 })
+// 获取用户IP地址 然后进行定位
+router.post('/getIp', (req, res, next) => {
+    // let ip = getIp(req);
+    let ip = '10.3.96.174'
 
+    fetch(`https://api.map.baidu.com/location/ip?ak=AuNgnw8TBDiyjBMYroGHphbef4PaTSMw&ip=${ip}&coor=bd09ll`).then((result) => {
+        result.json().then(data=>{
+            console.log(data);
+            if(data.status===0){
+
+            }else{
+                res.send(data);
+                return;
+            }
+        })
+    }).catch((err) => {
+        console.log(err);
+        res.send(err);
+        return;
+    });
+})
 async function getCitys(checkSql, checkSqlArr) {
     let obj = {};
     let data = null;
@@ -157,6 +178,26 @@ async function getCitys(checkSql, checkSqlArr) {
     }
     return obj;
 }
+// 获取IP函数
+const getIp = function (req) {
+    var ipStr = req.headers['x-forwarded-for']; //F5
+    if (ipStr) {
+        var ipArray = ipStr.split(",");
+        if (ipArray.length > 1) { //如果获取到的为ip数组（用手机访问时，如果机房双线，可能获取到的为数组
+            for (var i = 0; i < ipArray.length; i++) {
+                var ipNumArray = ipArray[i].split(".");
+                var tmp = ipNumArray[0] + "." + ipNumArray[1];
+                if (tmp == "192.168" || (ipNumArray[0] == "172" && ipNumArray[1] >= 16 && ipNumArray[1] <= 32) || ipNumArray[0] == "10") { //排除特殊区间ip
+                    continue;
+                }
+                return ipArray[i];
+            }
+        }
+        return ipArray[0];
+    } else { //F5获取不到时
+        return req.ip.substring(req.ip.lastIndexOf(":") + 1);
+    }
+};
 //#region
 /* 
 //采集大佬的定位数据吧！

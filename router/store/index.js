@@ -55,7 +55,7 @@ router.post('/getStoreItems', (req, res, next) => {
                 data: []
             })
     }
-    dbConfig.sqlConnect(typeSql,[id], typeCallBack);
+    dbConfig.sqlConnect(typeSql, [id], typeCallBack);
 
     async function getItems(typeArray) {
         let dataArray = [];
@@ -69,6 +69,21 @@ router.post('/getStoreItems', (req, res, next) => {
 
         return dataArray;
     }
+})
+// 模糊查询商店店铺
+router.post('/searchStore', (req, res, next) => {
+    let keyword = `%${req.body.keyword}%`;
+    let checksql = "select * from merchant where name like ?";
+    let callBack = function (err, data) {
+        if (err) {
+            console.log(err);
+            res.send('null');
+            return;
+        }
+        res.send(data);
+        return;
+    }
+    dbConfig.sqlConnect(checksql, [keyword], callBack);
 })
 
 export default router;
