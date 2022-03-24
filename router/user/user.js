@@ -7,6 +7,7 @@ import dbconfig from "../../utils/dbconfig.js";
 
 const __dirname = path.resolve();
 const imgSrc = 'http://localhost:5115';
+// const imgSrc = 'http://124.222.90.62:5115';
 let router = express.Router();
 
 // 获取用户信息

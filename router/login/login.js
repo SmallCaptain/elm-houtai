@@ -5,7 +5,9 @@ import fetch from 'node-fetch';
 import {
     nanoid
 } from 'nanoid/async'
-const __dirname = 'http://localhost:5115'
+// const __dirname = 'http://localhost:5115';
+const __dirname = 'http://124.222.90.62:5115';
+
 let router = express.Router();
 
 // 登录账号
@@ -119,8 +121,6 @@ router.post('/loginUser', (req, res, next) => {
     dbConfig.sqlConnect(sql, sqlArr, callBack)
 
 })
-//定位
-
 // 获取所有 城市信息
 router.post('/getCitys', (req, res, next) => {
     let checkSql = "select * from citys where abbr like ?"
@@ -148,24 +148,78 @@ router.post('/getCitys', (req, res, next) => {
 })
 // 获取用户IP地址 然后进行定位
 router.post('/getIp', (req, res, next) => {
-    // let ip = getIp(req);
-    let ip = '10.3.96.174'
+    let ip = req.ip.match(/\d+\.\d+\.\d+\.\d+/)[0];
+    let data = getAddress();
 
-    fetch(`https://api.map.baidu.com/location/ip?ak=AuNgnw8TBDiyjBMYroGHphbef4PaTSMw&ip=${ip}&coor=bd09ll`).then((result) => {
-        result.json().then(data=>{
-            console.log(data);
-            if(data.status===0){
 
-            }else{
-                res.send(data);
-                return;
+    // data.then(datas =>{
+    //     console.log('进入响应');
+    //     res.send(datas);
+    //     return
+    // })
+
+    async function getAddress() {
+        let response = await fetch(`https://api.map.baidu.com/location/ip?ak=AuNgnw8TBDiyjBMYroGHphbef4PaTSMw&ip=${ip}&coor=bd09ll`);
+        let datas = response.json();
+        let obj = {};
+
+        datas.then(data => {
+            try {
+                console.log("@data", data);
+                if (data.status === 0) {
+
+                    console.log('已成功获取定位信息');
+
+                    obj.city = data.address.split('|')[2];
+                    obj.code = data.content.address_detail.city_code;
+                    obj.status = 200;
+                    console.log('@obj', obj);
+                    res.send(obj);
+
+                } else {
+                    console.log('获取定位信息出错');
+                    obj.status = 2;
+                    obj.msg = "获取失败 百度服务器内部错误";
+                    res.send(obj);
+
+                }
+            } catch (e) {
+                obj.status = 2;
+                obj.msg = '运行时错误'
+                console.log(e);
+
+                res.send(obj);
             }
-        })
-    }).catch((err) => {
-        console.log(err);
-        res.send(err);
-        return;
-    });
+
+        });
+
+
+
+    };
+    /*
+    then( async(result) => {
+            
+            let data = await new Promise((resolve,reject)=>{
+                result.json().then(data => {
+                    console.log(data);
+    
+                    if (data.status === 0) {
+                        console.log('定位成功');
+    
+                        let obj = {}
+                        let city = data.address.split('|')[2];
+    
+                        obj.city = city;
+                        obj.code = data.address_detail.city_code;
+                        obj.status = 200;
+                        resolve(obj);
+                    } else {
+                        obj.status = 2;
+                        reject(obj);
+                    }
+                        
+                })
+            })*/
 })
 async function getCitys(checkSql, checkSqlArr) {
     let obj = {};
@@ -178,26 +232,20 @@ async function getCitys(checkSql, checkSqlArr) {
     }
     return obj;
 }
-// 获取IP函数
-const getIp = function (req) {
-    var ipStr = req.headers['x-forwarded-for']; //F5
-    if (ipStr) {
-        var ipArray = ipStr.split(",");
-        if (ipArray.length > 1) { //如果获取到的为ip数组（用手机访问时，如果机房双线，可能获取到的为数组
-            for (var i = 0; i < ipArray.length; i++) {
-                var ipNumArray = ipArray[i].split(".");
-                var tmp = ipNumArray[0] + "." + ipNumArray[1];
-                if (tmp == "192.168" || (ipNumArray[0] == "172" && ipNumArray[1] >= 16 && ipNumArray[1] <= 32) || ipNumArray[0] == "10") { //排除特殊区间ip
-                    continue;
-                }
-                return ipArray[i];
-            }
-        }
-        return ipArray[0];
-    } else { //F5获取不到时
-        return req.ip.substring(req.ip.lastIndexOf(":") + 1);
+
+//获取数据库中所有城市的数据
+async function getCitys(checkSql, checkSqlArr) {
+    let obj = {};
+    let data = null;
+    for (const iterator of checkSqlArr) {
+        let abbr = iterator.split('%')[0];
+        data = await dbConfig.SySqlConnect(checkSql, iterator);
+
+        obj[abbr] = data;
     }
-};
+    return obj;
+}
+
 //#region
 /* 
 //采集大佬的定位数据吧！
