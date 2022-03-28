@@ -5,8 +5,8 @@ import fetch from 'node-fetch';
 import {
     nanoid
 } from 'nanoid/async'
-// const __dirname = 'http://localhost:5115';
-const __dirname = 'http://124.222.90.62:5115';
+const __dirname = 'http://localhost:5115';
+// const __dirname = 'http://124.222.90.62:5115';
 
 let router = express.Router();
 
@@ -221,17 +221,6 @@ router.post('/getIp', (req, res, next) => {
                 })
             })*/
 })
-async function getCitys(checkSql, checkSqlArr) {
-    let obj = {};
-    let data = null;
-    for (const iterator of checkSqlArr) {
-        let abbr = iterator.split('%')[0];
-        data = await dbConfig.SySqlConnect(checkSql, iterator);
-
-        obj[abbr] = data;
-    }
-    return obj;
-}
 
 //获取数据库中所有城市的数据
 async function getCitys(checkSql, checkSqlArr) {

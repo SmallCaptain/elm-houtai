@@ -3,7 +3,7 @@ import dbconfig from "../../utils/dbconfig.js";
 import dbConfig from '../../utils/dbconfig.js';
 let router = express.Router();
 
-//获取商店店铺
+// 获取商店店铺
 router.post('/getStore', (req, res, next) => {
     let checkSql = "select * from merchant";
     let callBack = function (err, data) {
@@ -85,5 +85,57 @@ router.post('/searchStore', (req, res, next) => {
     }
     dbConfig.sqlConnect(checksql, [keyword], callBack);
 })
+// 查询分类列表数据
+router.post('/getClassify', (req, res, next) => {
+    //从 type_class表中 取得相关tag数据
 
+    checkTypeClass();
+    async function checkTypeClass() {
+        let tagData;
+        let sql = "select * from type_class";
+
+        tagData = await dbConfig.SySqlConnect(sql, []);
+        if (tagData instanceof Array) {
+            //数组 说明没出错 tag数据 从商家中 搜索出对应数据
+            let resData = [];
+            let tagPromise = await new Promise((resolve, reject) => {
+
+                tagData.forEach(async (obj, index) => {
+                    let checkMerchant = "select type_name as name,count(*) as amount,type from merchant where type_class = ? group by type_name";
+                    let sqlArr = [obj.name];
+                    let item = {};
+                    let data = await dbConfig.SySqlConnect(checkMerchant, sqlArr);
+
+                    if (data instanceof Array) {
+                        item.tag = obj.name;
+                        if (data.length !== 0) {
+                            item.items = data;
+                        } else {
+
+                            item.items = [];
+                        }
+                        resData.push(item);
+                    } else {
+                        console.log(data);
+                        reject(null);
+                    }
+                    if (index === tagData.length - 1) {
+
+                        resolve(resData);
+                    }
+                })
+
+            });
+            res.send(tagPromise);
+        } else {
+            //出错了
+            console.log(tagData);
+            res.send({
+                status: 500,
+                msg: '出错'
+            });
+            return;
+        }
+    }
+})
 export default router;
