@@ -98,16 +98,15 @@ router.post('/getClassify', (req, res, next) => {
         if (tagData instanceof Array) {
             //数组 说明没出错 tag数据 从商家中 搜索出对应数据
             let resData = [];
-            let tagPromise = await new Promise((resolve, reject) => {
-
-                tagData.forEach(async (obj, index) => {
+            let tagPromise = await new Promise(async (resolve, reject) => {
+                for (let i = 0; i < tagData.length; i++) {
                     let checkMerchant = "select type_name as name,count(*) as amount,type from merchant where type_class = ? group by type_name";
-                    let sqlArr = [obj.name];
+                    let sqlArr = [tagData[i].name];
                     let item = {};
                     let data = await dbConfig.SySqlConnect(checkMerchant, sqlArr);
 
                     if (data instanceof Array) {
-                        item.tag = obj.name;
+                        item.tag = tagData[i].name;
                         if (data.length !== 0) {
                             item.items = data;
                         } else {
@@ -119,14 +118,13 @@ router.post('/getClassify', (req, res, next) => {
                         console.log(data);
                         reject(null);
                     }
-                    if (index === tagData.length - 1) {
 
-                        resolve(resData);
-                    }
-                })
+                }
+                resolve(resData);
 
             });
             res.send(tagPromise);
+
         } else {
             //出错了
             console.log(tagData);
@@ -137,5 +135,99 @@ router.post('/getClassify', (req, res, next) => {
             return;
         }
     }
+})
+//根据分类列表查询商家
+router.post('/getMerchantByClassify', (req, res, next) => {
+    //req 请求参数为 type
+    let type = req.body.type;
+    let sql = "select * from merchant where type = ?";
+    let callback = function (err, data) {
+        if (err) {
+            console.log(err)
+            res.send({
+                status: 500,
+                msg: '请求出错！'
+            });
+            return;
+        }
+        if (data.length !== 0) {
+            res.send({
+                status: 200,
+                data
+            });
+        } else {
+            res.send({
+                status: 500,
+                msg: 'NOT_DATA'
+            });
+        }
+    }
+    dbConfig.sqlConnect(sql, [type], callback);
+})
+//排序查询商家
+router.post('/searchMerchantBySort', (req, res, next) => {
+    //type是排序种类 详情看excel表
+    let type = req.body.type;
+    //classify 表示种类 比如 简餐 烧烤 小吃 奶茶
+    let classify = req.body.classify;
+    console.log('@classify', classify);
+    let sql = '';
+    let callback = function (err, data) {
+        if (err) {
+            console.log(err);
+            res.send({
+                status: 500,
+                msg: '查询出错'
+            })
+            return;
+        }
+        if (data.length !== 0) {
+            res.send({
+                status: 200,
+                data
+            })
+        } else {
+            res.send({
+                status: 500,
+                msg: '空数据。。'
+            });
+        }
+
+        return;
+    }
+    if (type === 'autoSort') {
+        //智能排序。。。 呃。。？ 全部搜索吧
+        sql = classify !== '' ? 'select * from merchant where type = ?' : 'select * from merchant';
+    } else if (type === 'shortDistance') {
+        //距离最近 即公里数最小 升序
+        sql = classify !== '' ? 'select * from merchant where type= ? order by instance asc' :
+            'select * from merchant order by instance asc';
+
+    } else if (type === 'topSelling') {
+        //销量最高
+        sql = classify !== '' ? 'select * from merchant where type= ? order by sales desc' :
+            'select * from merchant order by sales desc';
+    } else if (type === 'lowestStartPrice') {
+        //起送价最低
+        sql = classify !== '' ? 'select * from merchant where type= ? order by de_conditions asc' :
+            'select * from merchant order by de_conditions asc';
+
+    } else if (type === 'fastDelivery') {
+        //配送速度最快 配送时间越小 越有可能，，
+        sql = classify !== '' ? 'select * from merchant where type= ? order by shipping_time asc' : 
+        'select * from merchant order by shipping_time asc';
+
+    } else if (type === 'highestScore') {
+        //评分最高
+        sql = classify !=='' ? 'select * from merchant where type= ? order by star desc' :
+        'select * from merchant order by star desc';
+    }
+    if (classify !== '') {
+        dbConfig.sqlConnect(sql, [classify], callback);
+    } else {
+        dbConfig.sqlConnect(sql, [], callback);
+
+    }
+
 })
 export default router;
