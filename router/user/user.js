@@ -90,38 +90,44 @@ router.post('/delItem', (req, res, next) => {
     let delSqlArr = [];
     let id = req.user.userId;
     let reqData = req.body;
-    let callBack = function (err, data) {
-        if (err) {
-            console.log(err);
-            return;
+
+    if (reqData.length >= 0) {
+        delItem(reqData);
+    }
+    async function delItem(reqData) {
+        let flag = true;
+        for (let i = 0; i < reqData.length; i++) {
+            delSqlArr = [id];
+            for (const key in reqData[i]) {
+                const element = reqData[i][key];
+                delSqlArr.push(element);
+            }
+            if (delSqlArr.length > 1) {
+                let re = await dbConfig.SySqlConnect(delSql, delSqlArr);
+                if (re.affectedRows >= 1) {
+                    //ok
+                } else {
+                    //影响为0 G！
+
+                    flag = false;
+                    break;
+                }
+            }
         }
-        if (data.affectedRows >= 1) {
+      //  console.log("@flag",flag);
+        if (flag) {
             res.send({
                 status: 200,
                 msg: '删除成功'
             });
+            return;
         } else {
             res.send({
                 status: 500,
                 msg: '删除失败了'
             });
+            return;
         }
-    }
-    console.log(reqData);
-    if (reqData.length >= 0) {
-        reqData.forEach(item => {
-            delSqlArr = [id];
-            for (const key in item) {
-
-                const element = item[key];
-                delSqlArr.push(element);
-
-            }
-            console.log(delSqlArr);
-            if (delSqlArr.length > 1) {
-                dbConfig.sqlConnect(delSql, delSqlArr, callBack);
-            }
-        });
     }
 })
 // 修改用户名

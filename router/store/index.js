@@ -30,6 +30,7 @@ router.post('/getStoreItems', (req, res, next) => {
     // 第一次查询 获取商品type字段 后续根据type字段去查询出数据
     let typeSql = "select type from commoditys where merchant_id = ? group by type ";
     let id = req.body.id;
+    console.log('@id:',id);
     let typeCallBack = function (err, data) {
         if (err) {
             console.log(err);
@@ -59,12 +60,11 @@ router.post('/getStoreItems', (req, res, next) => {
 
     async function getItems(typeArray) {
         let dataArray = [];
-        let selSql = "select * from commoditys where type = ?";
+        let selSql = "select * from commoditys where type = ? && merchant_id = ?";
 
         for (let i = 0; i < typeArray.length; i++) {
-            let data = await dbconfig.SySqlConnect(selSql, typeArray[i].type);
+            let data = await dbconfig.SySqlConnect(selSql, [typeArray[i].type,id]);
             dataArray.push(data);
-
         }
 
         return dataArray;
@@ -220,7 +220,7 @@ router.post('/searchMerchantBySort', (req, res, next) => {
     } else if (type === 'highestScore') {
         //评分最高
         sql = classify !=='' ? 'select * from merchant where type= ? order by star desc' :
-        'select * from merchant order by star desc';
+        'select * from merchant  order by star desc';
     }
     if (classify !== '') {
         dbConfig.sqlConnect(sql, [classify], callback);
