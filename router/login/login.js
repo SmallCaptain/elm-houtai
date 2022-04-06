@@ -17,7 +17,7 @@ router.post('/loginUser', (req, res, next) => {
     let reqData = req.body;
     let secretKey = 'mnnu'
     sqlArr.push(reqData.username)
-    console.log(req.user);
+    console.log('@user',req.user);
     let callBack = (err, data) => {
         if (err) {
             console.log('链接出错')

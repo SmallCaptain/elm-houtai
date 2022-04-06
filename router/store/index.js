@@ -30,7 +30,7 @@ router.post('/getStoreItems', (req, res, next) => {
     // 第一次查询 获取商品type字段 后续根据type字段去查询出数据
     let typeSql = "select type from commoditys where merchant_id = ? group by type ";
     let id = req.body.id;
-    console.log('@id:',id);
+    // console.log('@id:',id);
     let typeCallBack = function (err, data) {
         if (err) {
             console.log(err);
@@ -61,9 +61,35 @@ router.post('/getStoreItems', (req, res, next) => {
     async function getItems(typeArray) {
         let dataArray = [];
         let selSql = "select * from commoditys where type = ? && merchant_id = ?";
-
+        let classifySql = "select * from commoditys_classify where type_id = ?"
         for (let i = 0; i < typeArray.length; i++) {
-            let data = await dbconfig.SySqlConnect(selSql, [typeArray[i].type,id]);
+            //查出每个商家商品
+            let data = await dbconfig.SySqlConnect(selSql, [typeArray[i].type, id]);
+            //对每个商品 查询 分类
+            for (let j = 0; j < data.length; j++) {
+                if (data[j].classify_id !== '0') {
+                    let classifyObj = {};
+                    //查出分类 type_name
+                    let typeObj = await dbConfig.SySqlConnect(classifySql, [data[j].classify_id]);
+                    let checkKeySql = "select * from commoditys_key where type_id = ?";
+                    classifyObj.type_name = typeObj[0].type_name;
+                    classifyObj.type_keys = [];
+                    //根据分类 查出属性 key
+                    let typeKey = await dbConfig.SySqlConnect(checkKeySql, [typeObj[0].type_id]);
+                    let checkValueSql = "select type_key_value from commoditys_key_choice where type_key = ? and type_id = ?";
+                    
+                    for (let c = 0; c < typeKey.length; c++) {
+                        //  根据属性 查出属性可选值 value
+                        let values = await dbconfig.SySqlConnect(checkValueSql, [typeKey[c].type_key, typeKey[c].type_id]);
+                        let obj ={};
+                        obj.type_key = typeKey[c].type_key;
+                        obj.type_key_name = typeKey[c].type_key_name;
+                        obj.type_key_values = values;
+                        classifyObj.type_keys.push(obj);
+                    }
+                    data[j].classify_detail = classifyObj;
+                }
+            }
             dataArray.push(data);
         }
 
@@ -214,13 +240,13 @@ router.post('/searchMerchantBySort', (req, res, next) => {
 
     } else if (type === 'fastDelivery') {
         //配送速度最快 配送时间越小 越有可能，，
-        sql = classify !== '' ? 'select * from merchant where type= ? order by shipping_time asc' : 
-        'select * from merchant order by shipping_time asc';
+        sql = classify !== '' ? 'select * from merchant where type= ? order by shipping_time asc' :
+            'select * from merchant order by shipping_time asc';
 
     } else if (type === 'highestScore') {
         //评分最高
-        sql = classify !=='' ? 'select * from merchant where type= ? order by star desc' :
-        'select * from merchant  order by star desc';
+        sql = classify !== '' ? 'select * from merchant where type= ? order by star desc' :
+            'select * from merchant  order by star desc';
     }
     if (classify !== '') {
         dbConfig.sqlConnect(sql, [classify], callback);
@@ -229,5 +255,38 @@ router.post('/searchMerchantBySort', (req, res, next) => {
 
     }
 
+})
+//获取特定商家信息
+router.post('/getMerchantById', (req, res, next) => {
+    let merchant_id = req.body.storeId;
+    let sql = "select * from merchant where id = ?";
+    let callback = function (err, data) {
+        if (err) {
+            console.log(err);
+            res.send({
+                status: 500,
+                msg: '出错',
+                data: []
+            })
+            return;
+        }
+        if (data.length !== 0) {
+
+            res.send({
+                status: 200,
+                data,
+                msg: '查询成功'
+            });
+            return;
+        } else {
+            res.send({
+                status: 500,
+                msg: '没有数据',
+                data: []
+            })
+        }
+    }
+
+    dbConfig.sqlConnect(sql, [merchant_id], callback);
 })
 export default router;

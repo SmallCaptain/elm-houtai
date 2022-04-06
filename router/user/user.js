@@ -13,8 +13,9 @@ let router = express.Router();
 // 获取用户信息
 router.post('/getUserMsg', (req, res, next) => {
     // 返回 图像路径？     余额信息
-    let checkMsgSql = "select money,integrate,preferential_number,img,phone from user_msg,user where user.id = ?";
+    let checkMsgSql = "select money,integrate,preferential_number,img,phone from user_msg,user where user.id = ? and user.id = user_msg.id";
     let checkMsgSqlArr = [];
+    console.log('@userid', req.user.userId);
     checkMsgSqlArr.push(req.user.userId);
     let checkMsgSQLCallback = function (err, data) {
         if (err) {
@@ -27,6 +28,7 @@ router.post('/getUserMsg', (req, res, next) => {
                 ...data[0]
             }
         }
+        console.log('@resData:', resData);
         res.send(resData);
         return;
     }
@@ -114,7 +116,7 @@ router.post('/delItem', (req, res, next) => {
                 }
             }
         }
-      //  console.log("@flag",flag);
+        //  console.log("@flag",flag);
         if (flag) {
             res.send({
                 status: 200,
@@ -254,6 +256,7 @@ router.post('/RedPacket', (req, res, next) => {
             console.log(err);
             return;
         }
+        console.log('@红包数据:', data);
         if (data.length !== 0) {
             // 存在数据时进行处理
             let newArr = [];
