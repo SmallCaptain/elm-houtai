@@ -53,7 +53,7 @@ router.post('/loginUser', function (req, res, next) {
             username: data[0].user_name,
             userId: data[0].id
           }, secretKey, {
-            expiresIn: '10h'
+            expiresIn: '48h'
           });
 
           msg.token = token;

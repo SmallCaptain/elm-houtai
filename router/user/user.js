@@ -4,6 +4,9 @@ import formidable from 'formidable';
 import path from 'path';
 import fs from 'fs';
 import dbconfig from "../../utils/dbconfig.js";
+import {
+    nanoid
+} from 'nanoid/async';
 
 const __dirname = path.resolve();
 const imgSrc = 'http://localhost:5115';
@@ -291,6 +294,248 @@ router.post('/RedPacket', (req, res, next) => {
     }
     checkSqlArr.push(id);
     dbConfig.sqlConnect(checkSql, checkSqlArr, checkCallBack);
+})
+//下订单功能
+router.post('/orderForm', (req, response, next) => {
+    let userId = req.user.userId;
+    let merchantId = req.body.shoppingCart.storeId;
+    let cartData = req.body.shoppingCart.data;
+    let address = req.body.address;
+    let is_deal = req.body.is_deal;
+    // console.log('@userId:', userId);
+    // console.log('@merchantId:', merchantId);
+    // console.log('@cartData:', cartData);
+    // console.log('@address:', address);
+    // console.log('@is_deal:', is_deal);
+    /*要做的事情
+      1.往order表 订单表 插入一条数据 日期 截止日期 订单总价格等需要自己计算
+      2.往order_address 中插入收货地址等信息
+      3.根据cartData 以及生成的订单id 往order_item里插入数据 当 is_meal 为 0时
+        还需往 order_item_property 中分别插入本订单各个商品的属性于属性值
+
+    */
+    //生成订单id
+    try {
+        createOrderId().then(async data => {
+            let order_id = data;
+            let total_price = 0;
+            // 计算商品总价格
+            cartData.forEach(item => {
+                total_price += item.counts * item.item.price;
+            })
+            //查询商品配送费
+            let checkShippingFee = "select shipping_fee from merchant where id = ?"
+            let shipping_fee = await dbConfig.SySqlConnect(checkShippingFee, [merchantId]);
+            total_price += shipping_fee[0].shipping_fee;
+            // 创建发期日期
+            let create_date = Date.now();
+            // 创建订单截止日期
+            let dead_date = create_date + (15 * 60 * 1000);
+
+            // console.log('@order_id:', order_id);
+            // console.log(`@total_price:`, total_price);
+            // console.log('@create_date:', create_date.toString());
+            // 把数据插入order表中
+            let inOrderSql = "insert into order_form(order_id,user_id,merchant_id,total_price,create_time,dead_time,is_deal,is_dead) values(?,?,?,?,?,?,?,?)";
+            let inOrderArr = [order_id, userId, merchantId, total_price, create_date.toString(), dead_date.toString(), is_deal, 0];
+            let res = await dbConfig.SySqlConnect(inOrderSql, inOrderArr);
+
+            if (res.affectedRows >= 1) {
+                console.log('订单插入成功')
+                //订单插入成功后 再将 收货信息 插入收货表
+                let insOrderAddress = "insert into order_address(order_id,order_ship_address,recive_area,recive_area_detail,use_phone,recive_name) values(?,?,?,?,?,?)";
+                let insOrderAddressArr = [order_id, '暂无', address.recive_area, address.recive_area_detail, address.use_phone, address.recive_name];
+                let addressRes = await dbConfig.SySqlConnect(insOrderAddress, insOrderAddressArr);
+                if (addressRes.affectedRows >= 1) {
+                    console.log('收货人地址插入成功');
+                } else {
+                    console.log('收货人地址插入失败')
+                }
+                //将商品 分别插入对应商品表中
+                let insItem = "insert into order_item(order_id,item_order_id,item_id,is_meal,amounts,type) values(?,?,?,?,?,?)"
+                let callback = function (err, data) {
+                    if (err) {
+                        console.log(err);
+                    }
+                    if (data.affectedRows >= 1) {
+                        console.log('商品插入成功')
+                    }
+                }
+                for (let i = 0; i < cartData.length; i++) {
+                    let order_item_id = await nanoid();
+                    let sqlArr = [order_id, order_item_id, cartData[i].item.id, cartData[i].item.is_meal, cartData[i].counts, cartData[i].item.type];
+                    dbConfig.sqlConnect(insItem, sqlArr, callback);
+                    if (cartData[i].item.is_meal === 0) {
+                        //如果为规格商品 0
+                        // console.log(cartData[i].item.classify_detail);
+                        let type_name = cartData[i].item.classify_detail.type_name;
+                        let type_keys = cartData[i].item.classify_detail.type_keys;
+                        // 插入至 order_item_property
+                        let inSql = "insert into order_item_property(order_id,item_order_id,order_item_property,order_item_property_name,order_item_property_value,type)" +
+                            "values(?,?,?,?,?,?)"
+                        for (let j = 0; j < type_keys.length; j++) {
+                            let arr = [order_id, order_item_id, type_keys[j].type_key, type_keys[j].type_key_name, type_keys[j].type_key_value, type_name]
+
+                            dbconfig.sqlConnect(inSql, arr, callback)
+                        }
+                    }
+                }
+            } else {
+                console.log('订单失败')
+                console.log(res);
+            }
+            response.send({
+                code: 0,
+                msg: 'ok'
+            });
+        });
+    } catch (e) {
+        console.log('出错:');
+        console.log(e)
+        response.send({
+            code: 500,
+            msg: '出错'
+        });
+    }
+
+
+    async function createOrderId() {
+        let id = await nanoid();
+
+        return id;
+    }
+
+})
+//获取订单列表功能
+router.post('/getOrderList', (req, res, next) => {
+    //1.通过 userId 查询 order_form表 ---->取得订单id 时间 商家id 价格等
+    //2 在 1 的基础上查找出商家名称
+    //3.通过 1 取得 order_id 查询order_address 取得订单地址
+    //4.通过 1 取得 order_id 查询 order_item   取得订单商品
+    //5.在 4 的基础上 查找订单商品（规格）的属性
+    let user_id = req.user.userId;
+    let resData = []; //该数据是响应的数据
+    // 联合查询语句 同时满足  1 2要求
+    let checkOrderSql = 'SELECT order_id,name,merchant_id,total_price,create_time,dead_time,is_deal,is_dead,img,shipping_fee FROM order_form,merchant where user_id = ? and merchant.id = order_form.merchant_id';
+
+    checkData();
+    async function checkData() {
+        let orderForm = await dbConfig.SySqlConnect(checkOrderSql, [user_id]);
+
+        if (orderForm.length !== 0) {
+            for (let item of orderForm) {
+                let resObj = {
+                    ...item
+                };
+                //获取address
+                let addressSql = "select * from order_address where order_id = ?";
+                let address = await dbConfig.SySqlConnect(addressSql, [resObj.order_id]);
+                resObj.address = address[0];
+
+                //查询商品
+                let checkShopItem = "select item_order_id,item_id,type,is_meal,amounts from order_item where order_id = ?";
+                let itemDatas = await dbConfig.SySqlConnect(checkShopItem, [resObj.order_id]);
+                resObj.itemDatas = [];
+                // console.log('@itemDatas:',itemDatas);
+                for (let item of itemDatas) {
+                    let priceSql = "select price,name from commoditys where id = ?"
+                    let single_prcie = await dbConfig.SySqlConnect(priceSql,[item.item_id]);
+                    item.single_prcie = single_prcie[0].price;
+                    item.name = single_prcie[0].name;
+
+                    if (item.is_meal === 0) {
+                        //为0说明为规格数据 需要找出其属性值
+                        let propertySql = "select order_item_property,order_item_property_name,order_item_property_value,type from order_item_property where item_order_id = ?";
+                        let propertyDatas = await dbConfig.SySqlConnect(propertySql, [item.item_order_id]);
+                        item.classify_detail = [];
+                        // console.log('@property:',propertyDatas);
+
+                        for (let propertyObj of propertyDatas) {
+                            item.classify_detail.push(propertyObj);
+                        }
+                        // console.log('@classify_detail:', item.classify_detail);
+                    }
+                    resObj.itemDatas.push(item);
+                }
+                resData.push(resObj);
+            }
+            res.send({
+                code:0,
+                msg:'ok~',
+                data:resData
+            });
+        } else {
+            res.send({
+                code: 0,
+                msg: '没有订单数据'
+            });
+        }
+    }
+
+})
+//订单支付
+router.post('/sureOrder',(req,res,next)=>{
+    let order_id = req.body.order_id;
+    let chageSql = "update order_form set is_deal = ? where order_id = ?"
+    let callback=function(err,data){
+        if (err) {
+            console.log(err);
+            res.send({
+                code:500,
+                msg:'订单失败。。'
+            })
+            return;
+        }
+        if (data.affectedRows >= 1) {
+            console.log('订单支付成功~')
+            res.send({
+                code:0,
+                msg:'订单支付成功'
+            })
+            return;
+        }else{
+            console.log('订单支付失败')
+            res.send({
+                code:0,
+                msg:'订单支付成功'
+            })
+            return;
+        }
+    }
+    
+    dbconfig.sqlConnect(chageSql,[1,order_id],callback);
+})
+//订单超时
+router.post('/orderDeadPay',(req,res,next)=>{
+    let order_id = req.body.order_id;
+    let chageSql = "update order_form set is_dead = ? where order_id = ?"
+    let callback=function(err,data){
+        if (err) {
+            console.log(err);
+            res.send({
+                code:500,
+                msg:'超时失败。。'
+            })
+            return;
+        }
+        if (data.affectedRows >= 1) {
+            console.log('订单超时成功~')
+            res.send({
+                code:0,
+                msg:'订单超时成功'
+            })
+            return;
+        }else{
+            console.log('订单超时失败')
+            res.send({
+                code:0,
+                msg:'订单超时成功'
+            })
+            return;
+        }
+    }
+    
+    dbconfig.sqlConnect(chageSql,[1,order_id],callback);
 })
 
 
